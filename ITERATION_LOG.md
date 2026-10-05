@@ -47,4 +47,7 @@ Update 2 governed this session and was followed: Claude's summary said it called
 Evidence of improvement: corrections stayed at 0 in all three sessions, so the improvement shows in what went wrong instead. Session 1 had one CLAUDE.md gap (ruff skipped), Session 2 had one real defect (unvalidated user_id accepted with a 201), and Session 3 had no defects. It ran lint, validated the user, and wrote a specific-exception test without being told. By comparison, the Week 3 context-stripping drill with the original 5-line CLAUDE.md produced a raw KeyError and no docstring on the equivalent first prompt.
 
 ### CLAUDE.md update
-None. Session 3 needed no correction, and the test-isolation weakness is noted for the final version.
+Added to Conventions:
+`- New tests go in tests/test_tasks.py; error tests assert the specific subclass, e.g. pytest.raises(NotFoundError) — never pytest.raises(Exception) (ruff B017)`
+`- Tests must not rely on the shared TASKS contents staying fixed — process_order and create_task mutate it; create the data a test needs inside the test`
+I added the first rule because Claude's specific NotFoundError assertion in Session 3 was unprompted luck, not policy. The existing B017 tests show the default it could have copied, and Session 1 proved that weak assertion passes either way. I added the second rule because test_get_tasks_for_user_valid hard-codes {1, 2} against a dict that other tests and create_task mutate.

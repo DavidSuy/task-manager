@@ -26,6 +26,10 @@ Flask API for tasks and users. In-memory data, no database.
 - Any service function that takes a `user_id` must call `get_user(user_id)` from
   `services/users.py` first, so an unknown user raises `NotFoundError("User")` —
   never store or look up tasks for a user that doesn't exist in `USERS`
+- New tests go in `tests/test_tasks.py`; error tests assert the specific subclass,
+  e.g. `pytest.raises(NotFoundError)` — never `pytest.raises(Exception)` (ruff B017)
+- Tests must not rely on the shared `TASKS` contents staying fixed — `process_order` and
+  `create_task` mutate it; create the data a test needs inside the test
 
 ## Do not touch
 - `utils/errors.py` — the error classes and status codes (404, 422) are fixed
