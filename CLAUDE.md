@@ -23,6 +23,9 @@ Flask API for tasks and users. In-memory data, no database.
   `utils/errors.py` — never let a raw `KeyError` escape, never raise plain `Exception`
 - Missing records: check `if id not in DICT: raise NotFoundError("Task")` like `get_user`
 - Input validation: follow `create_user` — validate before writing to the dict
+- Any service function that takes a `user_id` must call `get_user(user_id)` from
+  `services/users.py` first, so an unknown user raises `NotFoundError("User")` —
+  never store or look up tasks for a user that doesn't exist in `USERS`
 
 ## Do not touch
 - `utils/errors.py` — the error classes and status codes (404, 422) are fixed

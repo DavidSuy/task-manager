@@ -1,4 +1,4 @@
-from utils.errors import NotFoundError
+from utils.errors import NotFoundError, ValidationError
 
 TASKS: dict[int, dict] = {
     1: {"id": 1, "title": "Buy groceries",  "done": False, "user_id": 1},
@@ -28,7 +28,20 @@ def get_task(task_id: int) -> dict:
     return TASKS[task_id]
 
 def create_task(title: str, user_id: int) -> dict:
+    """Create a new task.
+
+    Args:
+        title: The task's title.
+        user_id: The ID of the user the task belongs to.
+
+    Returns:
+        The newly created task record.
+
+    Raises:
+        ValidationError: If title is empty.
+    """
+    if not title or not title.strip():
+        raise ValidationError("title", "cannot be empty")
     new_id = max(TASKS.keys()) + 1
-    TASKS[new_id] = {"id": new_id, "title": title,
-                     "done": False, "user_id": user_id}
+    TASKS[new_id] = {"id": new_id, "title": title, "done": False, "user_id": user_id}
     return TASKS[new_id]
