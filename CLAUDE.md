@@ -6,7 +6,8 @@ Flask API for tasks and users. In-memory data, no database.
 - Setup: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 - Always `source .venv/bin/activate` before running anything
 - Test: `pytest -v` — run before finishing every task
-- Lint: `ruff check .`
+- Lint: `ruff check .` — run before finishing every task; the starting code has 6 errors,
+  do not add new ones and do not `--fix` files outside the task
 
 ## Architecture
 - Request flow: `app.py` → `routes/api.py` (Blueprint at `/api`) → `services/*.py`
