@@ -1,3 +1,4 @@
+from services.users import get_user
 from utils.errors import NotFoundError, ValidationError
 
 TASKS: dict[int, dict] = {
@@ -26,6 +27,21 @@ def get_task(task_id: int) -> dict:
     if task_id not in TASKS:
         raise NotFoundError("Task")
     return TASKS[task_id]
+
+def get_tasks_for_user(user_id: int) -> list[dict]:
+    """Retrieve all tasks belonging to a user.
+
+    Args:
+        user_id: The unique identifier for the user.
+
+    Returns:
+        A list of task records belonging to the user.
+
+    Raises:
+        NotFoundError: If no user exists with the given ID.
+    """
+    get_user(user_id)
+    return [task for task in TASKS.values() if task["user_id"] == user_id]
 
 def create_task(title: str, user_id: int) -> dict:
     """Create a new task.
