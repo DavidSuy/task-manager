@@ -27,9 +27,9 @@ Each subagent runs in a fresh session (`claude` relaunched, not `/clear`), gets 
 **Prompt (exact):**
 > In `services/users.py` only: add `"notification_pref": "none"` to both seed records in `USERS` and to the record `create_user` builds. Add a module-level constant `NOTIFICATION_PREFS = ("email", "sms", "none")`. Do not add, rename, or change the signature of any function. Do not modify any other file. Run `pytest -q` and `ruff check .` when done.
 
-**`pytest -q` result:**
+**`pytest -q` result:** 40 passed (same as before SA-1 — no regression; SA-1 adds no tests, so this does not prove the new field works). `ruff check .`: 6 errors, all pre-existing. Diff check: only `services/users.py` changed; `NOTIFICATION_PREFS` added; both seed records and `create_user`'s record have `"notification_pref": "none"`; no functions added or renamed; signatures unchanged. Constraint followed.
 
-**Fixes made in session:**
+**Fixes made in session:** None needed.
 
 ---
 
