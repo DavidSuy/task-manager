@@ -1,5 +1,11 @@
 import pytest
-from services.tasks import process_order, get_task, get_tasks_for_user, create_task
+from services.tasks import (
+    process_order,
+    get_task,
+    get_tasks_for_user,
+    create_task,
+    update_task_priority,
+)
 from utils.errors import NotFoundError, ValidationError
 
 def test_process_order_valid():
@@ -53,3 +59,32 @@ def test_create_task_invalid_priority_bool():
 def test_create_task_unknown_user():
     with pytest.raises(NotFoundError):
         create_task("New task", 999)
+
+def test_update_task_priority_valid():
+    task = create_task("Task to update", 1)
+    result = update_task_priority(task["id"], 5)
+    assert result["priority"] == 5
+
+def test_update_task_priority_unknown_task():
+    with pytest.raises(NotFoundError):
+        update_task_priority(999, 3)
+
+def test_update_task_priority_too_low():
+    task = create_task("Task to update", 1)
+    with pytest.raises(ValidationError):
+        update_task_priority(task["id"], 0)
+
+def test_update_task_priority_too_high():
+    task = create_task("Task to update", 1)
+    with pytest.raises(ValidationError):
+        update_task_priority(task["id"], 6)
+
+def test_update_task_priority_wrong_type():
+    task = create_task("Task to update", 1)
+    with pytest.raises(ValidationError):
+        update_task_priority(task["id"], "high")
+
+def test_update_task_priority_bool():
+    task = create_task("Task to update", 1)
+    with pytest.raises(ValidationError):
+        update_task_priority(task["id"], True)

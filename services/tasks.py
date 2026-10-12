@@ -43,6 +43,18 @@ def get_tasks_for_user(user_id: int) -> list[dict]:
     get_user(user_id)
     return [task for task in TASKS.values() if task["user_id"] == user_id]
 
+def _validate_priority(priority: int) -> None:
+    """Validate that a priority value is an integer between 1 and 5.
+
+    Args:
+        priority: The priority value to validate.
+
+    Raises:
+        ValidationError: If priority is not an integer between 1 and 5.
+    """
+    if isinstance(priority, bool) or not isinstance(priority, int) or not (1 <= priority <= 5):
+        raise ValidationError("priority", "must be an integer between 1 and 5")
+
 def create_task(title: str, user_id: int, priority: int = 3) -> dict:
     """Create a new task.
 
@@ -63,8 +75,7 @@ def create_task(title: str, user_id: int, priority: int = 3) -> dict:
     get_user(user_id)
     if not title or not title.strip():
         raise ValidationError("title", "cannot be empty")
-    if isinstance(priority, bool) or not isinstance(priority, int) or not (1 <= priority <= 5):
-        raise ValidationError("priority", "must be an integer between 1 and 5")
+    _validate_priority(priority)
     new_id = max(TASKS.keys()) + 1
     TASKS[new_id] = {
         "id": new_id,
@@ -74,3 +85,24 @@ def create_task(title: str, user_id: int, priority: int = 3) -> dict:
         "priority": priority,
     }
     return TASKS[new_id]
+
+def update_task_priority(task_id: int, priority: int) -> dict:
+    """Update a task's priority.
+
+    Args:
+        task_id: The unique identifier for the task.
+        priority: The task's new priority, from 1 (most urgent) to 5
+            (least urgent).
+
+    Returns:
+        The updated task record.
+
+    Raises:
+        NotFoundError: If no task exists with the given ID.
+        ValidationError: If priority is not an integer between 1 and 5.
+    """
+    if task_id not in TASKS:
+        raise NotFoundError("Task")
+    _validate_priority(priority)
+    TASKS[task_id]["priority"] = priority
+    return TASKS[task_id]
