@@ -65,9 +65,9 @@ Each subagent runs in a fresh session (`claude` relaunched, not `/clear`), gets 
 **Prompt (exact):**
 > In `routes/api.py` only, add three routes that call the existing functions in `services/users.py`: `GET /users` → `list_users()`; `GET /users/<int:user_id>/notifications` → `get_notification_pref(user_id)`; `PATCH /users/<int:user_id>/notifications` → `update_notification_pref(user_id, data.get("notification_pref"))`, returning 200. Use `data.get(...)`, never `data[...]`, so a missing key reaches the service and becomes a 422. Routes must only parse the request and call the service — no validation in the route. Do not modify `services/`, `utils/`, or `tests/`. Run `pytest -q` and `ruff check .` when done.
 
-**`pytest -q` result:**
+**`pytest -q` result:** 40 passed (no regression; SA-3 adds no tests). `ruff check .`: 6 errors, all pre-existing. Diff check: only `routes/api.py` changed; the three new names were appended to the existing `from services.users import get_user` line (no reformatting); three thin routes with no validation; PATCH uses `data.get("notification_pref")`. Constraint followed. Manual check with the Flask test client: `GET /api/users` and `GET /api/users/1` include `notification_pref`; GET notifications → 200 `"none"`; PATCH `"email"` → 200 and a following GET returns `"email"`; PATCH `"pigeon"` → 422; PATCH `{}` → 422; unknown user → 404 on GET and PATCH. **Gap found:** a JSON body that isn't an object (e.g. `["email"]`) → `data.get` raises `AttributeError` → 500. SA-3 followed its prompt; the prompt (and the existing `POST`/`PATCH /tasks` routes) never covered non-object bodies. Left as is — fixing it is outside SA-3's prompt and SA-4 can't edit source.
 
-**Fixes made in session:**
+**Fixes made in session:** None.
 
 ---
 
