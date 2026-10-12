@@ -1,6 +1,7 @@
 import pytest
 
 from app import app
+from services.users import create_user
 
 
 @pytest.fixture
@@ -113,3 +114,57 @@ def test_list_tasks_route_priority_non_numeric(client):
     response = client.get("/api/tasks?priority=abc")
     assert response.status_code == 422
     assert "between 1 and 5" not in response.get_json()["error"]
+
+
+def test_get_notification_pref_route_default(client):
+    user = create_user("Notif User", "notif@example.com")
+    response = client.get(f"/api/users/{user['id']}/notifications")
+    assert response.status_code == 200
+    assert response.get_json()["notification_pref"] == "none"
+
+
+def test_update_notification_pref_route_email_then_get(client):
+    user = create_user("Notif User", "notif@example.com")
+    patch_response = client.patch(
+        f"/api/users/{user['id']}/notifications", json={"notification_pref": "email"}
+    )
+    assert patch_response.status_code == 200
+    get_response = client.get(f"/api/users/{user['id']}/notifications")
+    assert get_response.get_json()["notification_pref"] == "email"
+
+
+def test_update_notification_pref_route_invalid_value(client):
+    user = create_user("Notif User", "notif@example.com")
+    response = client.patch(
+        f"/api/users/{user['id']}/notifications", json={"notification_pref": "pigeon"}
+    )
+    assert response.status_code == 422
+
+
+def test_update_notification_pref_route_missing_body(client):
+    user = create_user("Notif User", "notif@example.com")
+    response = client.patch(f"/api/users/{user['id']}/notifications", json={})
+    assert response.status_code == 422
+
+
+def test_update_notification_pref_route_unknown_user(client):
+    response = client.patch(
+        "/api/users/999/notifications", json={"notification_pref": "email"}
+    )
+    assert response.status_code == 404
+
+
+def test_list_users_route_includes_notification_pref(client):
+    create_user("Notif User", "notif@example.com")
+    response = client.get("/api/users")
+    assert response.status_code == 200
+    users = response.get_json()
+    assert len(users) > 0
+    assert all("notification_pref" in user for user in users)
+
+
+def test_get_user_route_includes_notification_pref(client):
+    user = create_user("Notif User", "notif@example.com")
+    response = client.get(f"/api/users/{user['id']}")
+    assert response.status_code == 200
+    assert "notification_pref" in response.get_json()

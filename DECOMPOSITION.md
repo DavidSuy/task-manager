@@ -84,14 +84,25 @@ Each subagent runs in a fresh session (`claude` relaunched, not `/clear`), gets 
 **Prompt (exact):**
 > Write tests for the notification preference feature. Service tests go in a new `tests/test_users.py`: `get_notification_pref` default `"none"`; `update_notification_pref` with `"email"` and `"sms"`; invalid value `"pigeon"` → `ValidationError`; `None` → `ValidationError`; unknown user → `NotFoundError` for both functions; `list_users()` includes `notification_pref` on every user. API tests are appended to `tests/test_api.py` using its existing `client` fixture: GET notifications → 200 with default `"none"`; PATCH `"email"` → 200 and a following GET returns `"email"`; PATCH `"pigeon"` → 422; PATCH `{}` → 422; PATCH unknown user → 404; `GET /api/users` → 200 and every user has `notification_pref`; `GET /api/users/1` includes `notification_pref`. Tests must create their own users with `create_user` rather than rely on (or permanently change) seed users 1 and 2. Use specific exception classes, never `pytest.raises(Exception)`. Do not modify `services/`, `routes/`, `utils/`, `tests/test_tasks.py` or existing tests; if a test fails because of a source bug, stop and report it. Run `pytest -q` and `ruff check .` when done.
 
-**`pytest -q` result:**
+**`pytest -q` result:** 55 passed (40 before + 8 in new `tests/test_users.py` + 7 appended to `tests/test_api.py`). `ruff check .`: 6 errors, all pre-existing (the new files add none). Diff check: no files in `services/`, `routes/`, `utils/` or `tests/test_tasks.py` changed; existing tests in `test_api.py` untouched; `from services.users import create_user` added to `test_api.py`'s imports so API tests create their own users (no POST /users route exists). Every test except the unknown-user (999) cases creates its own user. Constraint followed. One deviation from the prompt: it asked for "`GET /api/users/1` includes `notification_pref`", but the same prompt also said not to rely on seed users 1 and 2. Claude resolved the contradiction quietly by testing `GET /api/users/<created id>` instead, and did not mention it.
 
-**Fixes made in session:**
+**Fixes made in session:** None — no test failed, so the "stop and report" rule was never triggered.
 
 ---
 
 ## Divergence
 
-- **Did Claude follow the constraint field for every subagent?** If not, which constraint was violated and what did Claude do instead?
-- **Did any subagent's output break the next subagent's assumption?** How did you recover?
-- **Would you write the decomposition differently a second time?** What would you change?
+**Did Claude follow the constraint field for every subagent?**
+Yes. All four stayed inside their Output files. The riskiest boundary was SA-1 vs SA-2, which both edit `services/users.py` (data vs functions in one file). SA-1 added no functions and SA-2 did not touch `USERS` or `NOTIFICATION_PREFS`. SA-3 added names to the existing `from services.users import get_user` line without reformatting it (unlike Task 1 Session 3, where Claude rewrote an import line it was only asked to extend). The closest thing to a violation was in SA-4, and the cause was my prompt, not Claude: the prompt asked for a test on seed user `GET /api/users/1` *and* told Claude not to rely on seed users. Claude picked the second rule and dropped the first without telling me. I only noticed by comparing the test list to the prompt line by line.
+
+**Did any subagent's output break the next subagent's assumption?**
+No hand-off broke. SA-2 used `NOTIFICATION_PREFS` exactly as SA-1 named it; SA-3 called SA-2's three functions with the agreed signatures; SA-4's tests matched SA-3's status codes (200/404/422) on the first run. Two things passed through the pipeline unchecked, though:
+- SA-2's error message prints a Python tuple — `must be one of ('email', 'sms', 'none')` — and SA-3 passes it straight to API clients. No subagent owned "what the error text looks like".
+- A JSON body that is valid but not an object (e.g. `["email"]`) makes `PATCH /api/users/<id>/notifications` return 500 (`AttributeError` on `data.get`). I found it with a manual test-client check after SA-3. SA-3 followed its prompt; SA-4's prompt was written before I knew about it, and SA-4 was not allowed to edit source anyway. I recorded it rather than fixing it outside the pipeline. The existing `POST /api/tasks` and `PATCH /api/tasks/<id>` routes have the same weakness.
+
+**Would you write the decomposition differently a second time?**
+1. **Give SA-1 to SA-3 a real check.** Running `pytest -q` after them only showed 40 passed, the same as before. That proved nothing old broke, not that the new code worked. I had to check SA-2 and SA-3 by hand. Next time each subagent should add tests for its own layer, or the Hand-off field should name a command that proves the hand-off (e.g. a one-line `python -c` check).
+2. **Re-read prompts for contradictions before running them.** The SA-4 conflict ("test user 1" vs "don't rely on seed users") was in the plan from the start. Claude resolved it silently rather than asking.
+3. **Put the malformed-input cases in the API prompt.** SA-3's prompt covered missing keys (`data.get`) but not non-object bodies, so the 500 was built in by design.
+4. **Settle the SA-4 "stop and report" vs PA5 "fix in the same session" conflict up front.** It never triggered because nothing failed, but if it had I would have had to break either my constraint or the course rule.
+5. **Consider merging SA-1 and SA-2.** The boundary held, but SA-1 was a 4-line change and the split mainly tested whether Claude respects a boundary inside one file.
