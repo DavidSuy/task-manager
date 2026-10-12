@@ -43,3 +43,46 @@ def create_user(name: str, email: str) -> dict:
     new_id = max(USERS.keys()) + 1
     USERS[new_id] = {"id": new_id, "name": name, "email": email, "notification_pref": "none"}
     return USERS[new_id]
+
+def list_users() -> list[dict]:
+    """Retrieve all user records.
+
+    Returns:
+        A list of all user records as dictionaries.
+    """
+    return list(USERS.values())
+
+def get_notification_pref(user_id: int) -> dict:
+    """Retrieve a user's notification preference.
+
+    Args:
+        user_id: The unique identifier for the user.
+
+    Returns:
+        A dictionary with the user's ID and notification preference.
+
+    Raises:
+        NotFoundError: If no user exists with the given ID.
+    """
+    user = get_user(user_id)
+    return {"user_id": user_id, "notification_pref": user["notification_pref"]}
+
+def update_notification_pref(user_id: int, pref: str) -> dict:
+    """Update a user's notification preference.
+
+    Args:
+        user_id: The unique identifier for the user.
+        pref: The new notification preference. Must be one of `NOTIFICATION_PREFS`.
+
+    Returns:
+        A dictionary with the user's ID and updated notification preference.
+
+    Raises:
+        NotFoundError: If no user exists with the given ID.
+        ValidationError: If pref is not one of `NOTIFICATION_PREFS`.
+    """
+    user = get_user(user_id)
+    if pref not in NOTIFICATION_PREFS:
+        raise ValidationError("notification_pref", f"must be one of {NOTIFICATION_PREFS}")
+    user["notification_pref"] = pref
+    return {"user_id": user_id, "notification_pref": pref}

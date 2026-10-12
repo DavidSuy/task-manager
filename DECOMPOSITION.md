@@ -46,9 +46,9 @@ Each subagent runs in a fresh session (`claude` relaunched, not `/clear`), gets 
 **Prompt (exact):**
 > In `services/users.py` only, add three functions following the conventions in `CLAUDE.md` (type hints, Google-style docstrings, `get_user` as the pattern): `list_users() -> list[dict]` returning all user records; `get_notification_pref(user_id: int) -> dict` and `update_notification_pref(user_id: int, pref: str) -> dict`, both returning `{"user_id": user_id, "notification_pref": <value>}`. Both must call `get_user(user_id)` first so an unknown user raises `NotFoundError("User")`. `update_notification_pref` must raise `ValidationError("notification_pref", ...)` for any value not in `NOTIFICATION_PREFS` (including `None`) before changing anything. Do not change `USERS`, `NOTIFICATION_PREFS`, or existing function signatures. Do not modify any other file. Run `pytest -q` and `ruff check .` when done.
 
-**`pytest -q` result:**
+**`pytest -q` result:** 40 passed (no regression; SA-2 adds no tests). `ruff check .`: 6 errors, all pre-existing. Diff check: only `services/users.py` changed; `list_users`, `get_notification_pref`, `update_notification_pref` added below `create_user`; `USERS`, `NOTIFICATION_PREFS` and existing signatures untouched; `get_user` called first in both pref functions; validation happens before the write. Constraint followed. Because no tests exist yet, I ran a manual check of the functions: default `"none"`, update to `"sms"` persisted, `"pigeon"` / `None` / `"EMAIL"` → `ValidationError` 422, unknown user → `NotFoundError` 404, every `list_users()` record has `notification_pref`. Notes for SA-3/SA-4: the error message prints the Python tuple, `must be one of ('email', 'sms', 'none')`, so it shows up as-is in API responses; `list_users()` returns the live `USERS` dicts (same as `get_user`), not copies.
 
-**Fixes made in session:**
+**Fixes made in session:** None needed.
 
 ---
 
