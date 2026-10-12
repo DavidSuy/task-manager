@@ -5,6 +5,7 @@ from services.tasks import (
     get_tasks_for_user,
     create_task,
     update_task_priority,
+    list_tasks,
 )
 from utils.errors import NotFoundError, ValidationError
 
@@ -88,3 +89,36 @@ def test_update_task_priority_bool():
     task = create_task("Task to update", 1)
     with pytest.raises(ValidationError):
         update_task_priority(task["id"], True)
+
+def test_list_tasks_no_filter_includes_created_tasks():
+    task_a = create_task("List task A", 1)
+    task_b = create_task("List task B", 1)
+    result_ids = {task["id"] for task in list_tasks()}
+    assert {task_a["id"], task_b["id"]} <= result_ids
+
+def test_list_tasks_filtered_by_priority():
+    task = create_task("Priority five task", 1, priority=5)
+    result = list_tasks(priority=5)
+    assert task["id"] in {t["id"] for t in result}
+    assert all(t["priority"] == 5 for t in result)
+
+def test_list_tasks_filter_excludes_other_priorities():
+    task = create_task("Priority two task", 1, priority=2)
+    result = list_tasks(priority=5)
+    assert task["id"] not in {t["id"] for t in result}
+
+def test_list_tasks_invalid_priority_too_low():
+    with pytest.raises(ValidationError):
+        list_tasks(priority=0)
+
+def test_list_tasks_invalid_priority_too_high():
+    with pytest.raises(ValidationError):
+        list_tasks(priority=6)
+
+def test_list_tasks_invalid_priority_wrong_type():
+    with pytest.raises(ValidationError):
+        list_tasks(priority="high")
+
+def test_list_tasks_invalid_priority_bool():
+    with pytest.raises(ValidationError):
+        list_tasks(priority=True)

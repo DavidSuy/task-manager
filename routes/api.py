@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
-from services.tasks import get_task, create_task, process_order, update_task_priority
+from services.tasks import get_task, create_task, process_order, update_task_priority, list_tasks
 from services.users import get_user
-from utils.errors import AppError
+from utils.errors import AppError, ValidationError
 
 api = Blueprint("api", __name__)
 
@@ -12,6 +12,17 @@ def handle_app_error(e):
 @api.route("/tasks/<int:task_id>", methods=["GET"])
 def get_task_route(task_id):
     return jsonify(get_task(task_id))
+
+@api.route("/tasks", methods=["GET"])
+def list_tasks_route():
+    priority_raw = request.args.get("priority")
+    priority = None
+    if priority_raw is not None:
+        try:
+            priority = int(priority_raw)
+        except ValueError:
+            raise ValidationError("priority", "must be an integer")
+    return jsonify(list_tasks(priority))
 
 @api.route("/tasks", methods=["POST"])
 def create_task_route():

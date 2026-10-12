@@ -43,6 +43,25 @@ def get_tasks_for_user(user_id: int) -> list[dict]:
     get_user(user_id)
     return [task for task in TASKS.values() if task["user_id"] == user_id]
 
+def list_tasks(priority: int | None = None) -> list[dict]:
+    """Retrieve all tasks, optionally filtered by priority.
+
+    Args:
+        priority: If provided, only tasks with this exact priority are
+            returned. Must be an integer between 1 and 5.
+
+    Returns:
+        A list of task records. If priority is None, all tasks are
+        returned; otherwise only tasks matching that priority.
+
+    Raises:
+        ValidationError: If priority is not an integer between 1 and 5.
+    """
+    if priority is None:
+        return list(TASKS.values())
+    _validate_priority(priority)
+    return [task for task in TASKS.values() if task["priority"] == priority]
+
 def _validate_priority(priority: int) -> None:
     """Validate that a priority value is an integer between 1 and 5.
 
