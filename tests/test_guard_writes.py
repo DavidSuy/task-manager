@@ -120,3 +120,32 @@ def test_bash_pattern_blocked(command):
 def test_bash_near_miss_allowed(command):
     result = run_hook("Bash", {"command": command})
     assert result.returncode == 0
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "echo x >> utils/errors.py",
+        "echo x > Utils/errors.py",
+        "cat x | tee utils/errors.py",
+        "cp /tmp/x utils/errors.py",
+        "sed -i s/a/b/ utils/errors.py",
+        "git checkout -- utils/errors.py",
+    ],
+)
+def test_bash_indirect_write_to_protected_path_blocked(command):
+    result = run_hook("Bash", {"command": command})
+    assert result.returncode == 2
+    assert result.stderr.strip()
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cat utils/errors.py",
+        "grep AppError utils/errors.py",
+    ],
+)
+def test_bash_read_of_protected_path_allowed(command):
+    result = run_hook("Bash", {"command": command})
+    assert result.returncode == 0

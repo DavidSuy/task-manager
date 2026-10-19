@@ -4,6 +4,7 @@
 import json
 import os
 import re
+import shlex
 import sys
 
 BLOCKED_PATHS = ["utils/errors.py", "DRILL_PROMPTS.md"]
@@ -24,6 +25,10 @@ BASH_PATTERNS = [
         "git push with --force/-f is not allowed.",
     ),
 ]
+
+SEPARATOR_TOKENS = {"|", ";", "&&", "||", "&"}
+REDIRECT_TOKENS = {">", ">>", "2>", "2>>"}
+REDIRECT_OR_SEPARATOR_PATTERN = re.compile(r"(2>>|2>|>>|>|\|\||\||&&|&|;)")
 
 
 def relative_path(file_path: str, project_dir: str) -> str:
@@ -91,19 +96,101 @@ def check_write_like(tool_name: str, tool_input: dict, project_dir: str) -> str 
     return None
 
 
-def check_bash(tool_input: dict) -> str | None:
-    """Apply the Bash command guard.
+def tokenize_command(command: str) -> list[str]:
+    """Split a shell command into tokens, isolating redirection/separator operators.
+
+    Args:
+        command: The raw Bash command string.
+
+    Returns:
+        The command's tokens, with quoting resolved by shlex where possible and
+        each of >, >>, 2>, 2>>, |, ||, &, &&, ; always its own token.
+    """
+    spaced = REDIRECT_OR_SEPARATOR_PATTERN.sub(r" \1 ", command)
+    try:
+        return shlex.split(spaced)
+    except ValueError:
+        return spaced.split()
+
+
+def split_segments(tokens: list[str]) -> list[list[str]]:
+    """Split a token stream into per-command segments at separator tokens.
+
+    Args:
+        tokens: Tokens produced by tokenize_command.
+
+    Returns:
+        One token list per simple command, with the separators removed.
+    """
+    segments = []
+    current: list[str] = []
+    for token in tokens:
+        if token in SEPARATOR_TOKENS:
+            if current:
+                segments.append(current)
+            current = []
+        else:
+            current.append(token)
+    if current:
+        segments.append(current)
+    return segments
+
+
+def targets_in_segment(segment: list[str]) -> list[str]:
+    """Find the paths a single command segment would write to.
+
+    Args:
+        segment: The tokens of one simple command (no separators).
+
+    Returns:
+        Paths the segment writes to: redirection targets, and, for
+        cp/mv/install/tee/sed -i/truncate/rm/git checkout|restore --, their
+        write-target arguments.
+    """
+    targets = []
+    for i, token in enumerate(segment):
+        if token in REDIRECT_TOKENS and i + 1 < len(segment):
+            targets.append(segment[i + 1])
+
+    if not segment:
+        return targets
+
+    command, args = segment[0], segment[1:]
+    non_flags = [arg for arg in args if not arg.startswith("-")]
+
+    if command in ("cp", "mv", "install") and non_flags:
+        targets.append(non_flags[-1])
+    elif command in ("tee", "truncate", "rm"):
+        targets.extend(non_flags)
+    elif command == "sed" and len(non_flags) > 1:
+        targets.extend(non_flags[1:])
+    elif command == "git" and args[:1] and args[0] in ("checkout", "restore") and "--" in segment:
+        targets.extend(segment[segment.index("--") + 1 :])
+
+    return targets
+
+
+def check_bash(tool_input: dict, project_dir: str) -> str | None:
+    """Apply the Bash command guard: blocked patterns, and writes to protected paths.
 
     Args:
         tool_input: The tool's input payload.
+        project_dir: The project's root directory (CLAUDE_PROJECT_DIR).
 
     Returns:
-        A block reason string if the command matches a blocked pattern, otherwise None.
+        A block reason string if the command matches a blocked pattern or targets a
+        protected path, otherwise None.
     """
     command = tool_input.get("command", "")
     for pattern, reason in BASH_PATTERNS:
         if pattern.search(command):
             return reason
+
+    blocked_lower = {blocked.lower() for blocked in BLOCKED_PATHS}
+    for segment in split_segments(tokenize_command(command)):
+        for target in targets_in_segment(segment):
+            if relative_path(target, project_dir).lower() in blocked_lower:
+                return f"Blocked: {target} is a protected file and cannot be modified."
     return None
 
 
@@ -122,7 +209,7 @@ def main() -> None:
     if tool_name in ("Write", "Edit", "MultiEdit"):
         reason = check_write_like(tool_name, tool_input, project_dir)
     elif tool_name == "Bash":
-        reason = check_bash(tool_input)
+        reason = check_bash(tool_input, project_dir)
 
     if reason:
         print(reason, file=sys.stderr)
