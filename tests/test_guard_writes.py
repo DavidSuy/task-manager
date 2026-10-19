@@ -31,6 +31,19 @@ def test_blocked_path_write(blocked_path):
     assert result.stderr.strip()
 
 
+@pytest.mark.parametrize(
+    "blocked_path",
+    ["Utils/errors.py", "UTILS/ERRORS.PY", "utils/../utils/errors.py", "drill_prompts.md"],
+)
+def test_blocked_path_write_case_and_dotdot_variants(blocked_path):
+    result = run_hook(
+        "Write",
+        {"file_path": str(PROJECT_DIR / blocked_path), "content": "anything"},
+    )
+    assert result.returncode == 2
+    assert result.stderr.strip()
+
+
 def test_allowed_path_write():
     result = run_hook(
         "Write",

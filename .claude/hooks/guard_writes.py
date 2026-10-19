@@ -27,19 +27,20 @@ BASH_PATTERNS = [
 
 
 def relative_path(file_path: str, project_dir: str) -> str:
-    """Convert a file path to a path relative to the project directory.
+    """Convert a file path to a normalized path relative to the project directory.
 
     Args:
         file_path: The path given to the tool, absolute or relative.
         project_dir: The project's root directory (CLAUDE_PROJECT_DIR).
 
     Returns:
-        The path relative to project_dir, exactly as computed by os.path.relpath,
-        with no case normalization or further cleanup.
+        The path relative to project_dir, with ".." segments collapsed via
+        os.path.normpath. Case is left as-is; callers compare case-insensitively.
     """
-    if os.path.isabs(file_path):
-        return os.path.relpath(file_path, project_dir)
-    return file_path
+    if not os.path.isabs(file_path):
+        file_path = os.path.join(project_dir, file_path)
+    normalized = os.path.normpath(file_path)
+    return os.path.relpath(normalized, project_dir)
 
 
 def new_content_for(tool_name: str, tool_input: dict) -> str:
@@ -74,11 +75,12 @@ def check_write_like(tool_name: str, tool_input: dict, project_dir: str) -> str 
     """
     file_path = tool_input.get("file_path", "")
     rel_path = relative_path(file_path, project_dir)
+    rel_path_lower = rel_path.lower()
 
-    if rel_path in BLOCKED_PATHS:
+    if rel_path_lower in (blocked.lower() for blocked in BLOCKED_PATHS):
         return f"Blocked: {rel_path} is a protected file and cannot be modified."
 
-    if rel_path == "services/tasks.py":
+    if rel_path_lower == "services/tasks.py":
         content = new_content_for(tool_name, tool_input)
         if CONNECTION_STRING_PATTERN.search(content):
             return (
