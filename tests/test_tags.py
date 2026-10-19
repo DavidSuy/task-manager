@@ -29,3 +29,13 @@ def test_create_tag_increments_id():
     first = create_tag("first-tag")
     second = create_tag("second-tag")
     assert second["id"] == first["id"] + 1
+
+
+def test_create_tag_non_string_name_int():
+    with pytest.raises(ValidationError):
+        create_tag(123)
+
+
+def test_create_tag_non_string_name_list():
+    with pytest.raises(ValidationError):
+        create_tag(["urgent"])
