@@ -29,6 +29,8 @@ requires creating or updating three files:
 - No business logic in the route handler. The route only parses the request
   (`request.get_json()`, `data.get(...)`) and calls one service function; all validation,
   defaults and error messages go in `services/$1.py`.
+- The service must validate the type of every input field (e.g. `isinstance(name, str)`), not
+  just emptiness, and raise `ValidationError` for a wrong type.
 - Do not edit `utils/errors.py`, existing service functions, or existing tests.
 - Add a new import line in `routes/api.py` for the new service; do not reformat existing
   import lines.
