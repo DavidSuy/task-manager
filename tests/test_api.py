@@ -168,3 +168,9 @@ def test_get_user_route_includes_notification_pref(client):
     response = client.get(f"/api/users/{user['id']}")
     assert response.status_code == 200
     assert "notification_pref" in response.get_json()
+
+
+def test_create_tag_route(client):
+    response = client.post("/api/tags", json={"name": "urgent"})
+    assert response.status_code == 201
+    assert response.get_json()["name"] == "urgent"
