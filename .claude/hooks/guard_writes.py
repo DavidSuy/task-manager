@@ -7,6 +7,11 @@ import re
 import shlex
 import sys
 
+# The path guard (BLOCKED_PATHS) and the Bash write-target/command guards only run for
+# tool_name in ("Write", "Edit", "MultiEdit", "Bash"), so an MCP tool that writes files or
+# runs shell-equivalent commands (e.g. mcp__filesystem__write_file, mcp__*__execute_command)
+# bypasses both guards today and could still modify or read-around these same protected
+# paths — the same class of gap Vector 1/2 exploited for Write/Bash before those were fixed.
 BLOCKED_PATHS = ["utils/errors.py", "DRILL_PROMPTS.md"]
 
 CONNECTION_STRING_PATTERN = re.compile(r"postgresql://|sqlite:///", re.IGNORECASE)
